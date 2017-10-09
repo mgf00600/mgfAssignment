@@ -3,20 +3,27 @@
  */
 package mgfAssignment;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author Mark.Freeman
+ * 
+ * Created: 10/8/2017
  *
  */
 public class TeamBuilderApp {
 
+	private static Boolean debug = true;
+	
+	static String configFileName = "config.properties";
+	static Integer MIN_PATHS = 2; // Configurable, but must be >= 2
+	static Integer MAX_PATHS = 50; // Configurable, but must be <= 50
+	
 	private static TeamBuilder teamBuilder;
-	/**
-	 * 
-	 */
+
 	public TeamBuilderApp() {
 		// TODO Auto-generated constructor stub
 	}
@@ -24,78 +31,56 @@ public class TeamBuilderApp {
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
 		System.out.println("Started TeamBuilder Application");
 	 
+		// If there is an optional properties file, load these values.... may Override MIN_PATHS and/or MAX_PATHS
+		if (loadPropertyValues() == 0) {
+			;//System.out.println("** Warning: No Properties file on ClassPath, Using default settings.");
+		}
+		else {
+			System.out.println("** Information: Properties file on ClassPath, values may Override default settings.");
+		}
+		
+		// Get no. of Paths to process, and the list of these paths, from User. Build original Matrix from paths.
 		teamBuilder = processInput();
 		
-		teamBuilder.transitiveClosure2();
+		// From original Matrix, perform the Transitive Closure on original Matrix, which gives us the results
+		teamBuilder.transitiveClosure();
 		
-		//System.out.println("The Transitive Closure of the Graph"); 
-		//TransitiveClosure transitiveClosure = new TransitiveClosure(numberofvertices);
-		//transitiveClosure.transitiveClosure(adjacency_matrix);	
+		if (debug) {
+			System.out.println(teamBuilder);
+		}
+		
+		// Compute the results and output
+		String results = teamBuilder.computeResults();
+		System.out.println(results);
 	}
 
 	public static TeamBuilder processInput() {
 		Scanner scan = new Scanner(System.in);
 		int numVertices = 0;
 
-		while ( ! (numVertices >= 2 && numVertices <= 50) ) {
-			System.out.print("Enter the number of paths ( >= 2 AND <= 50 ): ");
+		while ( ! (numVertices >= TeamBuilderApp.MIN_PATHS && numVertices <= TeamBuilderApp.MAX_PATHS) ) {
+			System.out.print("Enter the number of paths ( >= "+TeamBuilderApp.MIN_PATHS+" AND <= "+TeamBuilderApp.MAX_PATHS+"): ");
 			numVertices = scan.nextInt();
 		}
 		
-		System.out.println("Number of Vertices for Matrix:["+numVertices+"]");
 		TeamBuilder teamBuilder = new TeamBuilder(numVertices);
 		
-		String partialRegExp = "([0-1]+)[ \\t\\r\",]+";
-		String inputRegExp = "[ \\t\\r\\[\"]*([0-1]+)[ \\t\\r\",]+([0-1]+)[ \\t\\r\",]+";
-		
-		// Note: this ignores final ']' char, but my assumption is it does not have to be present
-		for (int i=2; i < numVertices; i++) {
-			inputRegExp = inputRegExp + partialRegExp;
+		String[] allPaths = teamBuilder.getValidUserPathString(scan);
+		if (allPaths == null || allPaths.length == 0) {
+			System.out.print("** FATAL: Paths list is Empty!");
+			return null;
 		}
-		
-		// Final pattern to capture 'numVertices' number of paths from the user
-		Pattern p = Pattern.compile(inputRegExp);
-		System.out.println("Pattern for matching: ["+inputRegExp+"]\n");
-		String inputPaths;
-		String[] allPaths = new String[numVertices];
-
-		Boolean validPaths = false;
-		while (!validPaths) {
-
-			System.out.print("Enter the String of paths: ");
-			inputPaths = scan.nextLine();
-			Matcher m = p.matcher(inputPaths);
-			
-			// Does the line user just entered, match the pattern?
-			if (m.find()) { // YES!
-				
-				System.out.println("**DEBUG** the pattern and capture groups matched the string");
-
-				// Be safe and verify the number of groups matched equals expected/required number of paths
-				if (m.groupCount() != numVertices) {
-					System.out.println("  ** ERROR: Invalid no. of paths, there must be = "+numVertices + "**\n");
-					continue; // back to while()
-				}
-				
-				for (int i = 0; i < numVertices; i++) {
-					allPaths[i] = m.group(i+1);
-					System.out.println("**DEBUG** Next Path:["+allPaths[i]+"]");
-				}
-				validPaths = true;
-			}
-		}
-		
-		// Now break the binary strings in a Matrix of size: (numVertices * numVertices)
+		// Now break the binary strings into a Matrix of size: (numVertices * numVertices)
 		int adjacency_matrix[][];
-		adjacency_matrix = new int[numVertices + 1][numVertices + 1];
+		adjacency_matrix = new int[numVertices][numVertices];
 
 		for (int i=0; i < allPaths.length; i++) { // for (each row)
 			
-			System.out.println("**DEBUG** Next Row for Matrix:["+allPaths[i]+"]");
+			//System.out.println("**DEBUG** Next Row for Matrix:["+allPaths[i]+"]");
 			char[] nextRow = allPaths[i].toCharArray(); // these are the column values
 			
 			int colNum = 0;
@@ -103,20 +88,50 @@ public class TeamBuilderApp {
 				adjacency_matrix[i][colNum++] = s - '0';
 			}			
 		}
-		
-		// Print out the Matrix to verify it is correct!
-		System.out.println("\n********** Start of Input Matrix before Transitive Closure **********");
-		for (int i=0; i < numVertices; i++ ) {
-			System.out.println("      ");
-			for (int j=0; j < numVertices; j++) {
-				System.out.print(adjacency_matrix[i][j]+" ");
-			}
-		}
-		System.out.println("\n\n********** End of Input Matrix before Transitive Closure **********");
-		
-		teamBuilder.setAdjancyMatrix(adjacency_matrix);
+		teamBuilder.setAdjacencyMatrix(adjacency_matrix);
 		scan.close();
 		return teamBuilder;
+	}
+
+	public static int loadPropertyValues() {
+		int rval = 0; // default is NO properties file
+		
+		InputStream input = TeamBuilderApp.class.getClassLoader().getResourceAsStream(TeamBuilderApp.configFileName);
+		if (input == null) {
+			;//System.out.println("Warning: No Properties file in ClassPath, using Defaults.");
+		}
+		else {
+			Properties prop = new Properties();
+			try {
+				prop.load(input);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			rval = 1; // May or may not be entries for MIN_PATHS and/or MAX_PATHS
+			String strMin = prop.getProperty("MIN_PATHS");
+			if (strMin != null && strMin.length() > 0)
+				TeamBuilderApp.MIN_PATHS = Integer.valueOf(strMin);
+			if (TeamBuilderApp.MIN_PATHS < 2) {
+				System.out.println("**WARNING: Invalid  Properties file 'MIN_PATHS' entry, Reset to 2");
+				TeamBuilderApp.MIN_PATHS = 2;
+			}
+			
+			String strMax = prop.getProperty("MAX_PATHS");
+			if (strMax != null && strMax.length() > 0)
+				TeamBuilderApp.MAX_PATHS = Integer.valueOf(strMax);
+			if (TeamBuilderApp.MAX_PATHS > 50) {
+				System.out.println("**WARNING: Invalid  Properties file 'MAX_PATHS' entry, Reset to 50");
+				TeamBuilderApp.MAX_PATHS = 50;
+			}
+			
+			if (TeamBuilderApp.MIN_PATHS >= TeamBuilderApp.MAX_PATHS) {
+				 System.out.println("**WARNING: Invalid Properties file 'MIN_PATHS' entry, Reset to 2");
+				TeamBuilderApp.MIN_PATHS = 2;
+			}
+		}
+		return rval;
 	}
 	
 	public static String getStringFromMainApp() {

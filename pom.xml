@@ -6,15 +6,15 @@
   <name>Mgf Assignment</name>
   <description>Project for MassMutual programming tasks</description>
 
-<!--  
   <dependencies>
     <dependency>
-      <groupId>com.github.mgf00600</groupId>
-      <artifactId>mass-mutual</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
-  
+<!--  
   <repositories>
     <repository>
       <id>jitpack.io</id>

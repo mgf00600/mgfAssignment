@@ -61,11 +61,9 @@ public class TeamBuilder {
 		return this.transitiveMatrix;
 	}
 
-/*	public int[] specialLocations(String[] paths) {
-		int[] rvals = null;		
-		return rvals;
-	}
-*/
+	/*
+	 * From T-Closure Matrix, count results
+	 */
 	public String computeResults() {
 		
 		// Compute 1st count => the nodes that can reach all other nodes
@@ -98,10 +96,37 @@ public class TeamBuilder {
 		return result;
 	}
 	
+	/*
+	 * Prompt User for a valid set of row strings
+	 */
 	public String[] getValidUserPathString(Scanner scan) {
 	 
-		String strNum = Integer.toString(numberofVertices);
+		Boolean validPaths = false;
+		String[] pathStrings = null;
 		
+		while (!validPaths) {
+			
+			System.out.print("Enter the String of paths: ");
+			String inputPaths = scan.nextLine();
+			
+			pathStrings = extractMatchedPatternString(numberofVertices,inputPaths);
+			if (pathStrings == null) {
+				System.out.println("  ** Error: Invalid no. of paths, there must be = "+numberofVertices + " **\n");
+				continue; // back to while()
+			}
+			validPaths = true;
+		}
+		return pathStrings;
+	}
+
+	/*
+	 * Based on expected number of rows and related expected no. of 0/1's that match,
+	 * pattern-match only a correct sequence.
+	 */
+	public String[] extractMatchedPatternString(int matrixSize, String pathString) {
+		
+		String strNum = Integer.toString(matrixSize	);
+	
 		/* The pattern is dynamic since it needs to be based on User-selected no. of vertices for the matrix.
 		 * Note that the pattern is constrained by number of column entries, to ensure there are exactly n*n
 		 * entries entered by user. Also, comma's must separate each set of row values. But no other constraint
@@ -110,42 +135,35 @@ public class TeamBuilder {
 		String partialRegExp = "([0-1]{"+strNum+"})[ \\t\\r\",]+";
 		String inputRegExp = "[ \\t\\r\\[\"]*([0-1]{"+strNum+"})[ \\t\\r\",]+([0-1]{"+strNum+"})[ \\t\\r\",]+";
 	
-		// Pattern built based on no. of vertices
-		for (int i=2; i < numberofVertices; i++) {
+		// Dynamic Pattern built based on expected no. of vertices
+		for (int i=2; i < matrixSize; i++) {
 			inputRegExp = inputRegExp + partialRegExp;
 		}
 	
-		// Final pattern to capture 'numVertices' number of paths from the user
+		// Final pattern to capture 'matrixSize' number of paths from the user
 		Pattern p = Pattern.compile(inputRegExp);
-		//System.out.println("** DEBUG; Pattern for matching: ["+inputRegExp+"]\n");
-		String inputPaths;
-		String[] allPaths = new String[numberofVertices];
-
-		Boolean validPaths = false;
-		while (!validPaths) {
-			
-			System.out.print("Enter the String of paths: ");
-			inputPaths = scan.nextLine();
-			Matcher m = p.matcher(inputPaths);
+		Matcher m = p.matcher(pathString);
+		String[] allPaths = null;//new String[matrixSize];
 		
-			// Does the line user just entered, match the pattern?
-			if (m.find()) { // YES!
+		// Does the line user just entered, match the pattern?
+		if (m.find()) { // YES!
+			allPaths = new String[matrixSize];
 			
-				// Be safe and verify the number of groups matched equals expected/required number of paths
-				if (m.groupCount() != numberofVertices) {
-					System.out.println("  ** ERROR: Invalid no. of paths, there must be = "+numberofVertices + "**\n");
-					continue; // back to while()
-				}
-				
-				for (int i = 0; i < numberofVertices; i++) {
-					allPaths[i] = m.group(i+1);
-				}
-				validPaths = true;
+			// Be safe and verify the number of groups matched equals expected/required number of paths
+			if (m.groupCount() != matrixSize) {
+				System.out.println("  ** ERROR: Invalid no. of paths, there must be = "+matrixSize + "**\n");
+				return null; // Should not happen, but a sanity check is usually a good idea
 			}
+				
+			for (int i = 0; i < matrixSize; i++) {
+				allPaths[i] = m.group(i+1);
+			}
+			return allPaths;
 		}
-		return allPaths;
+		return null;
 	}
 
+	// The Floyd Warshall Algorithm, runs in O(n*n*n)
 	public void transitiveClosure() {
 		   /* transitiveMatrix[][] will be the output matrix that will finally have the 
 	       shortest distances between every pair of vertices */
@@ -192,7 +210,7 @@ public class TeamBuilder {
 		setTransitiveMatrix(transitiveMatrix);
 	}
 	
-	 
+	// An easy to read output of instances of this call
     public String toString() {
     	StringBuffer rval = new StringBuffer();
 

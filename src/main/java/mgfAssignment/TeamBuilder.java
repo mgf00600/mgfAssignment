@@ -3,6 +3,9 @@
  */
 package mgfAssignment;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -99,15 +102,16 @@ public class TeamBuilder {
 	/*
 	 * Prompt User for a valid set of row strings
 	 */
-	public String[] getValidUserPathString(Scanner scan) {
+	public String[] getValidUserPathString() throws IOException {
 	 
 		Boolean validPaths = false;
 		String[] pathStrings = null;
-		
+		BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+
 		while (!validPaths) {
 			
 			System.out.print("Enter the String of paths: ");
-			String inputPaths = scan.nextLine();
+			String inputPaths = input.readLine();//scan.nextLine();
 			
 			pathStrings = extractMatchedPatternString(numberofVertices,inputPaths);
 			if (pathStrings == null) {
@@ -116,6 +120,7 @@ public class TeamBuilder {
 			}
 			validPaths = true;
 		}
+		//scan.close();
 		return pathStrings;
 	}
 
@@ -151,7 +156,7 @@ public class TeamBuilder {
 			
 			// Be safe and verify the number of groups matched equals expected/required number of paths
 			if (m.groupCount() != matrixSize) {
-				System.out.println("  ** ERROR: Invalid no. of paths, there must be = "+matrixSize + "**\n");
+				System.out.println("  **ERROR: Invalid no. of paths, there must be = "+matrixSize + "**\n");
 				return null; // Should not happen, but a sanity check is usually a good idea
 			}
 				
